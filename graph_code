@@ -1,0 +1,181 @@
+const registrationsTrend=async(req:any,res:any)=>{
+	// Display month wise data display
+try {
+  const month=req?.query.month
+  const year = moment(month).format('YYYY');
+  const yearOfMonth=month?{where:{
+    createdAt:{[Op.substring]:`${year}`}
+  }}:''
+  const registeredData = await db.tbl_user_masters.findAll({
+    attributes:[[db.sequelize.fn("MONTH", db.sequelize.col("createdAt")), "month"],
+    [db.sequelize.fn("count", "*"), "count"]],
+    group: ['month'],
+    raw:true,
+  ...yearOfMonth,
+  logging:true
+  })
+     
+    const monthList=registeredData.map((item:any) => {
+      return monthOfYear(item.month) //--> switch case pass the number of month after return name of month
+    })
+    const monthWiseData=registeredData.map((item:any) => {
+      return item.count
+    })
+ 
+    const finalData={
+      month:monthList,
+      data:monthWiseData
+    }
+   
+  commonResponse(
+    res,
+    200,
+    finalData,
+    "",
+    "",
+    process.env.ENVIROMENT
+  );
+} catch (error:any) {
+  commonResponse(
+    res,
+    500,
+    error.message,
+    "",
+    "",
+    process.env.ENVIROMENT
+  );
+}
+}
+
+const leadSourceChart=async(req:any,res:any)=>{
+  try {
+    const {year}=req.query
+    const whereCondition=year?`where YEAR(ls_master.createdAt)=${year}`:""
+    const query=`SELECT ls_master.source type,count(ls_master.id) as value FROM tbl_lead_masters as l_master inner join tbl_lead_source_masters AS ls_master on l_master.lead_source_id=ls_master.id ${whereCondition} group by l_master.lead_source_id;`
+    const leadsData = await db.sequelize.query(query, {
+      type: QueryTypes.SELECT,
+    });
+
+    let finalArrayData:any=[]
+        const totalLead:any=[]
+        finalArrayData.push(["Task","Hours per Day"])
+        leadsData.map((item:any)=>{
+           const result:any = Object.entries(item)[0][1];
+           const name= result.replace(/_/g, " ")         
+           const result1 = Object.entries(item)[1][1];
+           const data=[name,result1]
+           totalLead.push(result1)
+           finalArrayData.push(data)
+        })
+  
+    const sumWithInitial = totalLead.reduce(
+      (accumulator:any, currentValue:any) => accumulator + currentValue,
+      0,
+    );
+    return commonResponse(
+      res,
+      200,
+      { success: true, users:finalArrayData,total:sumWithInitial||"" },
+      []
+    );
+  } catch (error:any) {
+    console.log("getLeadSourceList => error", error);
+    return commonResponse(
+      res,
+      500,
+      [],
+      error.message,
+      "",
+      process.env.ENVIROMENT
+    );
+  }
+}
+
+
+const usersRegistrationsYearData=async(req:any,res:any)=>{
+  try {
+    const selectYear=await db.tbl_user_masters.findAll({
+      attributes:['id',['createdAt','year']],
+      group: ['createdAt'],
+      order: [
+        ['createdAt', 'DESC'],
+    ],
+      raw:true,
+    })
+     
+    const selectiveYear=  selectYear.map((chartYear:any)=>{
+      const year = moment(chartYear?.year).format('YYYY');
+      return{
+        year
+      }
+    })
+    const uniqueArray = Array.from(new Set(selectiveYear.map((a:any) => JSON.stringify(a)))).map((e:any)=> JSON.parse(e));
+    return commonResponse(
+      res,
+      200,
+      uniqueArray,
+      []
+    );
+  } catch (error:any) {
+    return commonResponse(
+      res,
+      500,
+      [],
+      error.message,
+      "",
+      process.env.ENVIROMENT
+    );
+  }
+}
+
+// month of days data
+core query='SELECT COUNT(createdAt),createdAt FROM `tbl_feedback_masters` WHERE (MONTH(`createdAt`) = 8 AND YEAR(`createdAt`) = 2024) GROUP BY createdAt;'
+const feedbackChart=async(req:any,res:any)=>{
+  try {
+    const month=req?.query?.month;
+    const year = moment().format('YYYY');
+    const currentMonth=moment().format('M');
+    const getMonthData=month?month:currentMonth
+    const chartData=await db.tbl_feedback_master.findAll({
+      where: {
+        [Op.and]: [
+            db.Sequelize.where(db.Sequelize.fn('MONTH', db.Sequelize.col('createdAt')),getMonthData),
+            db.Sequelize.where(db.Sequelize.fn('YEAR', db.Sequelize.col('createdAt')),year),
+        ],
+    },
+    attributes:[[db.sequelize.fn("Day", db.sequelize.col("createdAt")), "days"],
+    [db.sequelize.fn("count", "createdAt"), "count"]
+  ],
+    group: ['days'],
+    raw:true,
+  })
+
+    const days=chartData.map(({days}:any)=>{
+      return days
+    })
+    const daysOfData=chartData.map(({count}:any)=>{
+      return count
+    })
+    const finalData={
+      days,
+      data:daysOfData
+    }
+    return commonResponse(
+      res,
+      200,
+      finalData,
+      [],
+      "",
+      process.env.ENVIROMENT
+    );
+  } catch (err: any) {
+    return commonResponse(
+      res,
+      500,
+      [],
+      err?.message,
+      "",
+      process.env.ENVIROMENT
+    );
+  }
+}
