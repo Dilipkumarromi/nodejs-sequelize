@@ -1,0 +1,63 @@
+bar char array wise data
+ "users": [
+            [
+                "Task",
+                "Hours per Day"
+            ],
+            [
+                "buildistan contact form",
+                68
+            ],
+            [
+                "buildistan register form",
+                462
+            ],
+            [
+                "outgoing call",
+                1
+            ]
+        ],
+
+const leadSourceChart=async(req:any,res:any)=>{
+  try {
+    const {year}=req.query
+    const whereCondition=year?`where YEAR(ls_master.createdAt)=${year}`:""
+    const query=`SELECT ls_master.source type,count(ls_master.id) as value FROM tbl_lead_masters as l_master inner join tbl_lead_source_masters AS ls_master on l_master.lead_source_id=ls_master.id ${whereCondition} group by l_master.lead_source_id;`
+    const leadsData = await db.sequelize.query(query, {
+      type: QueryTypes.SELECT,
+    });
+
+    let finalArrayData:any=[]
+        const totalLead:any=[]
+        finalArrayData.push(["Task","Hours per Day"])
+        leadsData.map((item:any)=>{
+           const result:any = Object.entries(item)[0][1];
+           const name= result.replace(/_/g, " ")         
+           const result1 = Object.entries(item)[1][1];
+           const data=[name,result1]
+           totalLead.push(result1)
+           finalArrayData.push(data)
+        })
+  
+    const sumWithInitial = totalLead.reduce(
+      (accumulator:any, currentValue:any) => accumulator + currentValue,
+      0,
+    );
+    return commonResponse(
+      res,
+      200,
+      { success: true, users:finalArrayData,total:sumWithInitial||"" },
+      []
+    );
+  } catch (error:any) {
+    console.log("getLeadSourceList => error", error);
+    return commonResponse(
+      res,
+      500,
+      [],
+      error.message,
+      "",
+      process.env.ENVIROMENT
+    );
+  }
+}
