@@ -1,0 +1,85 @@
+React backend api mobile and web chart data create
+const registrationChartWebAndMobile=async(req:any,res:any)=>{
+  try {  
+  const yearData=req?.query?.year
+  const year = moment(yearData).format('YYYY');
+  const wherConditionsMobile=yearData?{where:{
+    createdAt:{[Op.substring]:`${year}`},
+    registered_by:1
+  }}:{where:{
+    createdAt:{[Op.substring]:`${year}`},
+    registered_by:1
+  }}
+   // mobile registered data
+  const registeredMobile = await db.tbl_user_masters.findAll({
+    attributes:[[db.sequelize.fn("MONTH", db.sequelize.col("createdAt")), "month"],
+    [db.sequelize.fn("count", "*"), "count"]],
+    group: ['month'],
+    raw:true,
+  ...wherConditionsMobile,
+  logging:true
+  })
+   // web registered data
+  const wherConditionsWeb=yearData?{where:{
+    createdAt:{[Op.substring]:`${year}`},
+    registered_by:2
+  }}:{where:{
+    createdAt:{[Op.substring]:`${year}`},
+    registered_by:2
+  }}
+  const registeredWeb = await db.tbl_user_masters.findAll({
+    attributes:[[db.sequelize.fn("MONTH", db.sequelize.col("createdAt")), "month"],
+    [db.sequelize.fn("count", "*"), "count"]],
+    group: ['month'],
+    raw:true,
+  ...wherConditionsWeb,
+  logging:true
+  })
+      // mobile registered data
+    const monthList=registeredMobile.map((item:any) => {
+      return monthOfYear(item.month)
+    })
+    const monthWiseData=registeredMobile.map((item:any) => {
+      return item.count
+    })
+    // web registered data
+    const monthListWeb=registeredWeb.map((item:any) => {
+      return monthOfYear(item.month)
+    })
+    const monthWiseDataWeb=registeredWeb.map((item:any) => {
+      return item.count
+    })
+ 
+    const finalData={
+      mobile:[
+        {
+          month:monthList,
+          data:monthWiseData
+        }
+      ],
+      web:[
+        {
+          month:monthListWeb,
+          data:monthWiseDataWeb
+        }
+      ]
+      
+    }
+   
+    return commonResponse(
+      res,
+      200,
+      finalData,
+      []
+    );
+  } catch (error:any) {
+    return commonResponse(
+      res,
+      500,
+      [],
+      error.message,
+      "",
+      process.env.ENVIROMENT
+    );
+  }
+}
