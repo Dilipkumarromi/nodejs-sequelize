@@ -1,0 +1,26 @@
+// days data 
+const daysWiseCallingTrends=async()=>{
+    const wherConditionsWeb={}
+    const registeredWeb = await CallLead.findAll({
+      attributes:[[db.sequelize.fn("Day", db.sequelize.col("createdAt")), "days"],
+      [db.sequelize.fn("count", "createdAt"), "count"]],
+        group: ['days'],
+        raw:true,
+    //   ...wherConditionsWeb,
+      logging:true
+      })
+      console.log('days-wise',registeredWeb)
+          // mobile registered data
+        const dayData=registeredWeb.map((items:any)=>{
+          return items.days
+        })
+        const data=registeredWeb.map((items:any)=>{
+          return items.count
+        })
+        const finalData={
+          days:dayData,
+          data
+        }
+        return finalData
+    }
+    
