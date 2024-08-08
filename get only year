@@ -1,0 +1,18 @@
+data get createdAt only Year
+const callLeadYear=async()=>{
+    const data= await CallLead.findAll({
+        attributes:[
+            [db.sequelize.fn('YEAR', db.sequelize.col('createdAt')), 'Date']
+        ],
+        group: ['date'],
+        raw:true,
+        logging:true
+    })
+    console.log('dddddd>>>>',data)
+    const year=data.map((year:any)=>{
+        return moment( year.year).format('YYYY');
+    })
+    console.log('list of year',year)  
+     
+    return year
+}
