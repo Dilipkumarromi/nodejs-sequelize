@@ -29,6 +29,9 @@ function dbPastDateFormatting(dateString:any) {
     const currentDate = helpers.currentDateFormatting(new Date());
 # moment
  // Define the two dates and times
+ 
+#const date1 = moment('2024-09-18T14:30:00');
+#const date2 = moment('2024-09-18T16:45:00');
     const date1 = moment(dbPastDate);
     const date2 = moment(currentDate);
 
