@@ -108,3 +108,11 @@ const findJsonObjectDifferences = (oldObject: JsonObject, newObject: JsonObject)
       await createLogs(finalPayload)//--> db create logs
       return finalPayload
     });
+
+// object black string handle to insert db
+if (typeof finalPayload.to_value === 'object' &&  finalPayload.to_value === null || typeof  finalPayload.to_value === 'string' &&  finalPayload.to_value.trim() === '') {
+        console.log("b is null or an empty string");
+      }
+      else{
+        await createLogs(finalPayload)
+      }
