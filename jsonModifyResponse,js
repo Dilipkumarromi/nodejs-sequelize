@@ -1,0 +1,18 @@
+const modifyResp = async (bannerList: any) => {
+  const jsonData =JSON.parse( JSON.stringify(bannerList,null,2)) 
+  for (const banner of jsonData) {
+    for (const position of banner.banner_position) {
+      const totalBanner = await db.tbl_banners_masters.count({
+        attributes: ['screen_positions_id', [db.sequelize.fn('COUNT', 'id'), 'count']],
+        where: {
+          screen_positions_id: position?.id
+        },
+        raw: true
+      });
+      
+      position.total = totalBanner !== undefined ? totalBanner : 0;
+    }
+  }
+  
+  return jsonData;
+};
