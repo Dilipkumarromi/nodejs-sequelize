@@ -1,0 +1,67 @@
+docker logs==> docker logs -f --tail 200 acaaf95bf4cd
+npx sequelize-cli model:generate --name tbl_new_blogs_bookmarks --attributes  user_id:integer,news_blogs_id:integer,news_title:string,news_sub_title:string,new_body:string,news_type_id:integer,like_count:integer,share_count:integer,created_by:integer,updated_by:integer
+npx sequelize-cli model:generate --name tbl_pmt_district_masters --attributes district_name:string
+npx sequelize-cli db:migrate
+sudo docker exec -it backend-b2b-user-service-1 sh
+sudo docker exec -it server-pmt-project-service-1 sh
+---- Table Delete--------------------
+npx sequelize-cli migration:generate --name change_tbl_pmt_lead_request_logs
+up: async (queryInterface, Sequelize) => {
+    await queryInterface.dropTable('tbl_banner_screen_masters');
+  },
+
+----- Change table name---------
+npx sequelize-cli migration:generate --name add_tbl_pmt_lead_masters
+ up: async (queryInterface, Sequelize) => {
+    await queryInterface.renameTable('tbl_dealer_ledgers_sap_master', 'tbl_bcrm_dealer_ledgers_sap_master');
+   // await queryInterface.renameTable('OldTableName', 'NewTableName')
+  },
+//remove table field name
+queryInterface.removeColumn('tbl_paytm_transaction', 'event_type'),
+----- add table name---------
+npx sequelize-cli migration:create --name add_tbl_pdc_masters
+ queryInterface.addColumn(
+      'tbl_pdc_masters', // table name
+      'remark',// new field name
+      {
+        type: Sequelize.String,
+        allowNull: true,
+	after:'submitted_by_role_name',
+	comment:"delete remarks"
+      },
+    )
+
+npx sequelize-cli migration:create --name rename_table_fields_tbl_banners_master
+ await queryInterface.renameColumn('tbl_mobile_banners', 'is_super_admin','is_special_user', {
+      type: Sequelize.BOOLEAN,
+      allowNull: true,
+    })
+
+npx sequelize-cli migration:create --name change_tbl_user_address_masters
+
+
+
+
+await queryInterface.changeColumn('bl_login_histories', 'location', {
+      type: Sequelize.JSON,
+      allowNull: true,
+    }),
+await queryInterface.changeColumn('tbl_unit_of_measurements', 'symbol', {
+      type: Sequelize.STRING(50),
+      allowNull: true,
+    }),
+await queryInterface.changeColumn('tbl_sub_categories', 'width', {
+      type: Sequelize.STRING(50),
+      allowNull: true,
+    }),
+ 
+await queryInterface.changeColumn('tbl_product_shipping_details', 'height', {
+      type: Sequelize.STRING(50),
+      allowNull: true,
+    }),
+await queryInterface.changeColumn('tbl_product_shipping_details', 'averge_delivery_time', {
+      type: Sequelize.STRING(100),
+      allowNull: true,
+    })
+
+ 
