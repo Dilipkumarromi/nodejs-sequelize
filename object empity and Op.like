@@ -1,0 +1,21 @@
+ const { skip = 1, take = 10,filter}: any = req.query;      
+      const offset: any = (skip - 1) * take; // Calculate offset
+      // Initialize whereCondition
+      let whereCondition: any = {};
+      let condition: any;
+      const objectParam= JSON.parse(filter)
+      if (objectParam && Object.keys(objectParam).length > 0) {
+        whereCondition = JSON.parse(filter);
+        // Corrected structure
+         condition = {
+          where: {
+              ...whereCondition,
+              ...(whereCondition.area_name ? {
+                  area_name: {
+                      [Op.like]: `%${whereCondition.area_name}%`
+                  }
+              } : {})
+          }
+      };
+      }
+      console.log("condition",condition)
