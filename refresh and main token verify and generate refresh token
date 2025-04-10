@@ -1,0 +1,185 @@
+import jwt from 'jsonwebtoken';
+const SECRET_KEY: any = process.env.TOKEN_KEY
+const REFRESH_KEY: any = process.env.REFRESH_SECRET_KEY
+const { commonResponse } = require('@ssiltools/shared-files');
+const jwtMiddleware = require('jsonwebtoken');
+import db from '../models';
+
+const verifyToken = (req: any, res: any, next: any) => {
+    const token = req.cookies?.token || null
+    console.log("web",token)
+    try {
+        if (token === null || token === '')
+            return commonResponse(res, 400, [], [], "No Token found", process.env.ENVIROMENT);
+
+        var { exp }: any = jwt.decode(token);
+        if (Date.now() >= exp * 1000) {
+            return commonResponse(res, 403, [], [], "Your token is expired!!")
+        }
+
+        jwt.verify(token, SECRET_KEY, (err: any, user: any) => {
+            if (err) return commonResponse(res, 403, [], [], "Invalid token")
+
+            const result: any = jwtMiddleware.decode(req.cookies.token)
+            const user_id = result?.user_id || null;
+            const name = result?.name || null;
+            req.user_id = user_id
+            if (req.method === "POST" && req.url !== '/v1/apis/user/login') {
+                req.body.created_by = user_id;
+                req.body.created_by_username = name
+            }
+            req.user = user
+            return next();
+        });
+    } catch (err: any) {
+        return commonResponse(res, 500, err.message, [], "", process.env.ENVIROMENT);
+    }
+}
+
+const verifyAppToken =async (req: any, res: any, next: any) => {
+    const token = req.headers['authorization'] || null
+    try {
+        if (token === null || token === '')
+            return commonResponse(res, 401, [], [], "Unauthorized access", process.env.ENVIROMENT);
+        let tokenValue = token.split(' ');
+        tokenValue = tokenValue[1] || null
+
+        if (tokenValue === null) {
+            return commonResponse(res, 401, [], [], "Unauthorized access", process.env.ENVIROMENT);
+        }
+
+        var { exp }: any = jwt.decode(tokenValue);
+        if (Date.now() >= exp * 1000) {
+            return commonResponse(res, 401, [], [], "Your token is expired!!")
+        }
+
+        // jwt.verify(tokenValue, SECRET_KEY, async(err: any, user: any) => {
+        //     if (err) return commonResponse(res, 403, [], [], "Invalid token")
+
+        //     const result: any = jwtMiddleware.decode(tokenValue)
+        //     const user_id = result?.user_id || null;
+        //     if (user_id) {
+        //         const findDeviceId = await db.tbl_pmt_users.findOne({
+        //             where: {
+        //                 id: user_id,
+        //             },
+        //             raw: true,
+        //         });
+        //         if (!findDeviceId?.device_id || (findDeviceId?.device_id != result?.device_id)) {
+        //             return commonResponse(res, 401, [], [], "Unauthorized access", process.env.ENVIROMENT);
+        //         }
+        //     }
+        //     const name = result?.name || null;
+        //     req.user_id = user_id
+        //     if (req.method === "POST" && req.url !== '/v1/apis/user/login') {
+        //         //req.body.created_by = user_id;
+        //         //req.body.created_by_username = name
+        //     }
+        //     req.user = user
+        //     return next();
+        // });
+        const isValidToken = await verifyTokenByRefreshORMainToken(tokenValue, SECRET_KEY, req, res);
+        if (isValidToken) {
+            return next();
+        }
+
+        const isRefreshTokenValid = await verifyTokenByRefreshORMainToken(tokenValue, REFRESH_KEY, req, res);
+        if (isRefreshTokenValid) {
+            return next();
+        }
+
+        return commonResponse(res, 403, [], [], "Invalid token", process.env.ENVIRONMENT);
+    } catch (err: any) {
+        return commonResponse(res, 500, err.message, [], "", process.env.ENVIROMENT);
+    }
+}
+/**
+ * token verify by refresh token or main token
+ * @param tokenValue 
+ * @param key 
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+const verifyTokenByRefreshORMainToken = (tokenValue: any, key: any, req: any, res: any) => {
+    return new Promise((resolve, reject) => {
+        jwt.verify(tokenValue, key, async (err: any, user: any) => {
+            if (err) {
+                resolve(false); // Token verification failed, continue
+                return;
+            }
+
+            const result = jwtMiddleware.decode(tokenValue);
+            const user_id = result?.user_id || null;
+
+            if (user_id) {
+                const findDeviceId = await db.tbl_pmt_users.findOne({
+                    where: { id: user_id },
+                    raw: true,
+                });
+
+                if (!findDeviceId?.device_id || findDeviceId?.device_id !== result?.device_id) {
+                    resolve(false); // Device ID mismatch
+                    return;
+                }
+            }
+
+            req.user_id = user_id;
+            req.user = user;
+            resolve(true); // Token verification succeeded
+        });
+    });
+};
+
+const refreshToken = async (req: any, res: any) => {
+  const expiredAccessToken = req.cookies?.token || null; // Access token from cookies
+  try {
+      // Check if the token is available in cookies
+      if (!expiredAccessToken) {
+          return res.status(400).json({
+              message: 'Access token is missing in cookies',
+          });
+      }
+
+      // Decode the expired token without verifying
+      const decoded: any = jwt.decode(expiredAccessToken);
+
+      // Validate the decoded payload
+      if (!decoded || !decoded.user_id || !decoded.name || !decoded.role_id) {
+          return res.status(403).json({
+              message: 'Invalid token structure',
+          });
+      }
+
+      const { user_id, name, role_id,device_id } = decoded;
+      const refreshTokenExpireTime = TOKEN_EXPIRED.match(/\d+/)[0];
+      // Generate a new refresh token based on the payload
+      const newRefreshToken = jwt.sign(
+          { user_id, name, role_id,device_id },
+          REFRESH_KEY,
+          { expiresIn: TOKEN_EXPIRED } // Set refresh token expiration (e.g., 7 days)
+      );
+
+      // Save the new refresh token in cookies
+      res.cookie('refreshToken', newRefreshToken, {
+          secure: process.env.ENVIRONMENT !== 'development', // Use secure flag in production
+          httpOnly: true, // Prevent client-side access
+          expires: new Date(Date.now() + Number(refreshTokenExpireTime) * 60 * 1000), // Set cookie expiration (7 days)
+      });
+
+         return res.status(200).json({
+          message: 'Refresh token generated successfully',
+          token: newRefreshToken,
+      });
+  } catch (err: any) {
+      console.error('Error during refresh token generation:', err.message);
+      return res.status(500).json({
+          message: 'Server error occurred',
+          error: err.message,
+      });
+  }
+};
+export {
+    verifyToken,
+    verifyAppToken
+}
