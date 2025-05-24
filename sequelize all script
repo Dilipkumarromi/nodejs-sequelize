@@ -64,4 +64,22 @@ await queryInterface.changeColumn('tbl_product_shipping_details', 'averge_delive
       allowNull: true,
     })
 
- 
+// add indexing
+await queryInterface.addIndex(
+  'tbl_pdc_masters',       // Table name
+  ['unique_field_name'],   // Column(s) to index
+  {
+    name: 'idx_unique_field_name', // Optional: custom index name
+    unique: true,                  // Makes the index unique
+    using: 'BTREE',                // Optional: default is BTREE
+  }
+);
+//addConstraint
+await queryInterface.addConstraint('tbl_pdc_masters', {
+  fields: ['column1', 'column2'],
+  type: 'unique',
+  name: 'unique_constraint_column1_column2'
+});
+// removeConstraint
+await queryInterface.removeConstraint('tbl_pdc_masters', 'unique_constraint_unique_field_name');
+
