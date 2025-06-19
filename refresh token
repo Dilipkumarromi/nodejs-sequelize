@@ -1,0 +1,60 @@
+const verifyAppToken =async (req: any, res: any, next: any) => {
+    const token = req.headers['authorization'] || null
+    try {
+        if (token === null || token === '')
+            return commonResponse(res, 401, [], [], "Unauthorized access", process.env.ENVIROMENT);
+        let tokenValue = token.split(' ');
+        tokenValue = tokenValue[1] || null
+
+        if (tokenValue === null) {
+            return commonResponse(res, 401, [], [], "Unauthorized access", process.env.ENVIROMENT);
+        }
+
+        var { exp }: any = jwt.decode(tokenValue);
+        if (Date.now() >= exp * 1000) {
+            return commonResponse(res, 401, [], [], "Your token is expired!!")
+        }
+        const isValidToken = await verifyToken(tokenValue, SECRET_KEY, req, res);
+        if (isValidToken) {
+            return next();
+        }
+
+        const isRefreshTokenValid = await verifyToken(tokenValue, SECRET_KEY, req, res);
+        if (isRefreshTokenValid) {
+            return next();
+        }
+
+        return commonResponse(res, 403, [], [], "Invalid token", process.env.ENVIRONMENT);
+    } catch (err: any) {
+        return commonResponse(res, 500, err.message, [], "", process.env.ENVIROMENT);
+    }
+}
+const verifyToken = (tokenValue: any, key: any, req: any, res: any) => {
+    return new Promise((resolve, reject) => {
+        jwt.verify(tokenValue, key, async (err: any, user: any) => {
+            if (err) {
+                resolve(false); // Token verification failed, continue
+                return;
+            }
+
+            const result = jwtMiddleware.decode(tokenValue);
+            const user_id = result?.user_id || null;
+
+            if (user_id) {
+                const findDeviceId = await db.tbl_pmt_users.findOne({
+                    where: { id: user_id },
+                    raw: true,
+                });
+
+                if (!findDeviceId?.device_id || findDeviceId?.device_id !== result?.device_id) {
+                    resolve(false); // Device ID mismatch
+                    return;
+                }
+            }
+
+            req.user_id = user_id;
+            req.user = user;
+            resolve(true); // Token verification succeeded
+        });
+    });
+};
